@@ -76,6 +76,21 @@ publishingCompany.ele("xsd:element", { name: "name" })
 
 
 
+const FAULTS = ["NotFoundFault", "ValidationFault", "ConflictFault"];
+for (const fault of FAULTS) {
+    schema.ele("xsd:element", { name: fault })
+        .ele("xsd:complexType")
+        .ele("xsd:sequence")
+        .ele("xsd:element", { name: "message", type: "xsd:string" });
+}
+
+for (const fault of FAULTS) {
+    definitions.ele("wsdl:message", { name: `${fault}Message` })
+        .ele("wsdl:part", { name: "detail", element: `tns:${fault}` });
+}
+
+
+
 const OUTPUT_FILE = "library.wsdl"
 const wsdl = definitions.end({ prettyPrint: true });
 writeFileSync(OUTPUT_FILE, wsdl);
