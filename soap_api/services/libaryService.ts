@@ -146,6 +146,46 @@ function toAuthor(row: AuthorRow) {
 
 
 
+// PublishingCompany
+type PublishingCompanyRow = {
+    nPublishingCompanyID: number;
+    cName: string;
+};
+
+type PublishingCompanyFields = {
+    name: string;
+};
+
+function validatePublishingCompanyFields(args: any): PublishingCompanyFields {
+    const name = typeof args?.name === 'string' ? args.name.trim() : '';
+    if (name.length === 0) {
+        throw fault('ValidationFault', 'name is required');
+    }
+    if (name.length > 40) {
+        throw fault('ValidationFault', 'name must be at most 40 characters');
+    }
+
+    return { name };
+}
+
+function requirePublishingCompany(id: number): PublishingCompanyRow {
+    const row = db.prepare('SELECT * FROM tpublishingcompany WHERE nPublishingCompanyID = ?').get(id) as PublishingCompanyRow | undefined;
+    if (!row) {
+        throw fault('NotFoundFault', `Publishing company ${id} does not exist`);
+    }
+    return row;
+}
+
+// Same order as the PublishingCompany type in the WSDL: PublishingCompanyFields, then id
+function toPublishingCompany(row: PublishingCompanyRow) {
+    return {
+        name: row.cName,
+        id: row.nPublishingCompanyID,
+    };
+}
+
+
+
 
 const libaryService: IServices = {
     LibraryService: {
@@ -239,6 +279,54 @@ const libaryService: IServices = {
                 db.prepare('DELETE FROM tauthor WHERE nAuthorID = ?').run(id);
 
                 return { success: true, message: `Author ${id} deleted` };
+            },
+
+
+
+            CreatePublishingCompany(args: any) {
+                const publishingCompany = validatePublishingCompanyFields(args);
+                const result = db.prepare(
+                    'INSERT INTO tpublishingcompany (cName) VALUES (?)'
+                ).run(publishingCompany.name);
+
+                return { id: Number(result.lastInsertRowid) };
+            },
+
+            GetPublishingCompanyById(args: any) {
+                return toPublishingCompany(requirePublishingCompany(requireId(args?.id)));
+            },
+
+            // Empty request: node-soap passes args as null
+            ListPublishingCompanies() {
+                const rows = db.prepare('SELECT * FROM tpublishingcompany ORDER BY nPublishingCompanyID').all() as PublishingCompanyRow[];
+
+                return { publishingCompany: rows.map(toPublishingCompany) };
+            },
+
+            UpdatePublishingCompany(args: any) {
+                const id = requireId(args?.id);
+                requirePublishingCompany(id);
+                const publishingCompany = validatePublishingCompanyFields(args);
+
+                db.prepare(
+                    'UPDATE tpublishingcompany SET cName = ? WHERE nPublishingCompanyID = ?'
+                ).run(publishingCompany.name, id);
+
+                return { success: true, message: `Publishing company ${id} updated` };
+            },
+
+            DeletePublishingCompany(args: any) {
+                const id = requireId(args?.id);
+                requirePublishingCompany(id);
+
+                const { count } = db.prepare('SELECT COUNT(*) AS count FROM tbook WHERE nPublishingCompanyID = ?').get(id) as { count: number };
+                if (count > 0) {
+                    throw fault('ConflictFault', `Publishing company ${id} is referenced by ${count} book(s)`);
+                }
+
+                db.prepare('DELETE FROM tpublishingcompany WHERE nPublishingCompanyID = ?').run(id);
+
+                return { success: true, message: `Publishing company ${id} deleted` };
             },
         },
     },
