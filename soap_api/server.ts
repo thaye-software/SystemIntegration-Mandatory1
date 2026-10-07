@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listen } from 'soap';
 
-import libaryService from './services/libaryService.js'
+import { libaryService } from './libaryService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WSDL_FILE = path.join(__dirname, 'library.wsdl');
