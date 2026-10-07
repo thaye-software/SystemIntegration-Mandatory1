@@ -1,0 +1,21 @@
+{
+  "name": "library-soap-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:wsdl": "tsx wsdl.ts",
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "soap": "^1.13.3",
+    "xmlbuilder2": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
