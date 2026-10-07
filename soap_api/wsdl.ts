@@ -53,32 +53,74 @@ schema.ele("xsd:complexType", { name: "Book" })
 
 
 
-const author = schema
-    .ele("xsd:complexType", { name: "Author"})
+// The author fields without id (used as input when creating an author)
+const authorFields = schema
+    .ele("xsd:complexType", { name: "AuthorFields"})
     .ele("xsd:sequence");
 
-author.ele("xsd:element", { name: "id", type: "xsd:int"});
-author.ele("xsd:element", { name: "name" })
+authorFields.ele("xsd:element", { name: "name" })
     .ele("xsd:simpleType")
     .ele("xsd:restriction", { base: "xsd:string" })
     .ele("xsd:maxLength", { value: "40" });
 
-author.ele("xsd:element", { name: "surname", minOccurs: "0" })
+authorFields.ele("xsd:element", { name: "surname", minOccurs: "0" })
     .ele("xsd:simpleType")
     .ele("xsd:restriction", { base: "xsd:string" })
     .ele("xsd:maxLength", { value: "60" });
 
+// Author = AuthorFields + id
+schema.ele("xsd:complexType", { name: "Author" })
+    .ele("xsd:complexContent")
+    .ele("xsd:extension", { base: "tns:AuthorFields" })
+    .ele("xsd:sequence")
+    .ele("xsd:element", { name: "id", type: "xsd:int" });
+
+schema.ele("xsd:complexType", { name: "AuthorList" })
+    .ele("xsd:sequence")
+    .ele("xsd:element", { name: "author", type: "tns:Author", minOccurs: "0", maxOccurs: "unbounded" });
 
 
-const publishingCompany = schema
-    .ele("xsd:complexType", {name: "PublishingCompany"})
+
+// The publishing company fields without id (used as input when creating a publishing company)
+const publishingCompanyFields = schema
+    .ele("xsd:complexType", {name: "PublishingCompanyFields"})
     .ele("xsd:sequence");
 
-publishingCompany.ele("xsd:element", { name: "id", type: "xsd:int"});
-publishingCompany.ele("xsd:element", { name: "name" })
+publishingCompanyFields.ele("xsd:element", { name: "name" })
     .ele("xsd:simpleType")
     .ele("xsd:restriction", { base: "xsd:string" })
     .ele("xsd:maxLength", { value: "40" });
+
+// PublishingCompany = PublishingCompanyFields + id
+schema.ele("xsd:complexType", { name: "PublishingCompany" })
+    .ele("xsd:complexContent")
+    .ele("xsd:extension", { base: "tns:PublishingCompanyFields" })
+    .ele("xsd:sequence")
+    .ele("xsd:element", { name: "id", type: "xsd:int" });
+
+schema.ele("xsd:complexType", { name: "PublishingCompanyList" })
+    .ele("xsd:sequence")
+    .ele("xsd:element", { name: "publishingCompany", type: "tns:PublishingCompany", minOccurs: "0", maxOccurs: "unbounded" });
+
+
+
+// Shared request/response types
+// EntityId: input of Get/Delete, output of Create
+schema.ele("xsd:complexType", { name: "EntityId" })
+    .ele("xsd:sequence")
+    .ele("xsd:element", { name: "id", type: "xsd:int" });
+
+// Acknowledgement: output of Update/Delete
+const acknowledgement = schema
+    .ele("xsd:complexType", { name: "Acknowledgement" })
+    .ele("xsd:sequence");
+
+acknowledgement.ele("xsd:element", { name: "success", type: "xsd:boolean" });
+acknowledgement.ele("xsd:element", { name: "message", type: "xsd:string" });
+
+// Empty: input of List
+schema.ele("xsd:complexType", { name: "Empty" })
+    .ele("xsd:sequence");
 
 
 
@@ -100,20 +142,33 @@ for (const fault of FAULTS) {
 
 
 
-// CreateBook
-schema.ele("xsd:element", { name: "CreateBookRequest", type: "tns:BookFields" });
-
-schema.ele("xsd:element", { name: "CreateBookResponse" })
-    .ele("xsd:complexType")
-    .ele("xsd:sequence")
-    .ele("xsd:element", { name: "id", type: "xsd:int" });
-
-
-
-// Every operation has a <name>Request and <name>Response element in the schema
+// Each operation gets a <name>Request element of the request type and a <name>Response element of the response type
 const OPERATIONS = [
-    { name: "CreateBook", faults: ["ValidationFault"] },
+    // Book
+    { name: "CreateBook",               request: "BookFields",              response: "EntityId",              faults: ["ValidationFault"] },
+    { name: "GetBookById",              request: "EntityId",                response: "Book",                  faults: ["NotFoundFault"] },
+    { name: "UpdateBook",               request: "Book",                    response: "Acknowledgement",       faults: ["ValidationFault", "NotFoundFault"] },
+    { name: "DeleteBook",               request: "EntityId",                response: "Acknowledgement",       faults: ["NotFoundFault"] },
+
+    // Author
+    { name: "CreateAuthor",             request: "AuthorFields",            response: "EntityId",              faults: ["ValidationFault"] },
+    { name: "GetAuthorById",            request: "EntityId",                response: "Author",                faults: ["NotFoundFault"] },
+    { name: "ListAuthors",              request: "Empty",                   response: "AuthorList",            faults: [] },
+    { name: "UpdateAuthor",             request: "Author",                  response: "Acknowledgement",       faults: ["ValidationFault", "NotFoundFault"] },
+    { name: "DeleteAuthor",             request: "EntityId",                response: "Acknowledgement",       faults: ["NotFoundFault", "ConflictFault"] },
+
+    // PublishingCompany
+    { name: "CreatePublishingCompany",  request: "PublishingCompanyFields", response: "EntityId",              faults: ["ValidationFault"] },
+    { name: "GetPublishingCompanyById", request: "EntityId",                response: "PublishingCompany",     faults: ["NotFoundFault"] },
+    { name: "ListPublishingCompanies",  request: "Empty",                   response: "PublishingCompanyList", faults: [] },
+    { name: "UpdatePublishingCompany",  request: "PublishingCompany",       response: "Acknowledgement",       faults: ["ValidationFault", "NotFoundFault"] },
+    { name: "DeletePublishingCompany",  request: "EntityId",                response: "Acknowledgement",       faults: ["NotFoundFault", "ConflictFault"] },
 ];
+
+for (const operation of OPERATIONS) {
+    schema.ele("xsd:element", { name: `${operation.name}Request`, type: `tns:${operation.request}` });
+    schema.ele("xsd:element", { name: `${operation.name}Response`, type: `tns:${operation.response}` });
+}
 
 for (const operation of OPERATIONS) {
     definitions.ele("wsdl:message", { name: `${operation.name}RequestMessage` })
