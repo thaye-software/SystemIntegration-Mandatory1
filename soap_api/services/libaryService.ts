@@ -92,6 +92,60 @@ function requireBook(id: number): BookRow {
 
 
 
+// Author
+type AuthorRow = {
+    nAuthorID: number;
+    cName: string;
+    cSurname: string | null;
+};
+
+type AuthorFields = {
+    name: string;
+    surname: string | null;
+};
+
+function validateAuthorFields(args: any): AuthorFields {
+    const name = typeof args?.name === 'string' ? args.name.trim() : '';
+    if (name.length === 0) {
+        throw fault('ValidationFault', 'name is required');
+    }
+    if (name.length > 40) {
+        throw fault('ValidationFault', 'name must be at most 40 characters');
+    }
+
+    let surname: string | null = null;
+    if (args.surname !== undefined && args.surname !== null) {
+        if (typeof args.surname !== 'string') {
+            throw fault('ValidationFault', 'surname must be a string');
+        }
+        if (args.surname.trim().length > 60) {
+            throw fault('ValidationFault', 'surname must be at most 60 characters');
+        }
+        surname = args.surname.trim() || null;
+    }
+
+    return { name, surname };
+}
+
+function requireAuthor(id: number): AuthorRow {
+    const row = db.prepare('SELECT * FROM tauthor WHERE nAuthorID = ?').get(id) as AuthorRow | undefined;
+    if (!row) {
+        throw fault('NotFoundFault', `Author ${id} does not exist`);
+    }
+    return row;
+}
+
+// Same order as the Author type in the WSDL: AuthorFields, then id
+function toAuthor(row: AuthorRow) {
+    return {
+        name: row.cName,
+        ...(row.cSurname !== null && { surname: row.cSurname }),
+        id: row.nAuthorID,
+    };
+}
+
+
+
 
 const libaryService: IServices = {
     LibraryService: {
@@ -137,6 +191,54 @@ const libaryService: IServices = {
                 db.prepare('DELETE FROM tbook WHERE nBookID = ?').run(id);
 
                 return { success: true, message: `Book ${id} deleted` };
+            },
+
+
+
+            CreateAuthor(args: any) {
+                const author = validateAuthorFields(args);
+                const result = db.prepare(
+                    'INSERT INTO tauthor (cName, cSurname) VALUES (?, ?)'
+                ).run(author.name, author.surname);
+
+                return { id: Number(result.lastInsertRowid) };
+            },
+
+            GetAuthorById(args: any) {
+                return toAuthor(requireAuthor(requireId(args?.id)));
+            },
+
+            // Empty request: node-soap passes args as null
+            ListAuthors() {
+                const rows = db.prepare('SELECT * FROM tauthor ORDER BY nAuthorID').all() as AuthorRow[];
+
+                return { author: rows.map(toAuthor) };
+            },
+
+            UpdateAuthor(args: any) {
+                const id = requireId(args?.id);
+                requireAuthor(id);
+                const author = validateAuthorFields(args);
+
+                db.prepare(
+                    'UPDATE tauthor SET cName = ?, cSurname = ? WHERE nAuthorID = ?'
+                ).run(author.name, author.surname, id);
+
+                return { success: true, message: `Author ${id} updated` };
+            },
+
+            DeleteAuthor(args: any) {
+                const id = requireId(args?.id);
+                requireAuthor(id);
+
+                const { count } = db.prepare('SELECT COUNT(*) AS count FROM tbook WHERE nAuthorID = ?').get(id) as { count: number };
+                if (count > 0) {
+                    throw fault('ConflictFault', `Author ${id} is referenced by ${count} book(s)`);
+                }
+
+                db.prepare('DELETE FROM tauthor WHERE nAuthorID = ?').run(id);
+
+                return { success: true, message: `Author ${id} deleted` };
             },
         },
     },
