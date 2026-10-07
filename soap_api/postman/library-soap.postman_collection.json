@@ -1,0 +1,2112 @@
+{
+    "info": {
+        "name": "Library SOAP API",
+        "description": "SOAP 1.2 API for the library (document/literal).\n\nEvery operation is a POST to {{baseUrl}} with:\n- Content-Type: application/soap+xml; charset=utf-8; action=\"<namespace>/<Operation>\"\n  (SOAP 1.2 has no separate SOAPAction header; the action is a parameter of the Content-Type)\n- Accept: application/soap+xml\n- A SOAP envelope in the body\n\nRun the whole collection with the Collection Runner. The requests are ordered:\nhappy path creates a publishing company, an author and a book and stores their ids in collection variables,\nthe negative tests use those ids, and the cleanup folder deletes everything again.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8000/soap"
+        },
+        {
+            "key": "ns",
+            "value": "http://library.com/library.wsdl"
+        },
+        {
+            "key": "publishingCompanyId",
+            "value": ""
+        },
+        {
+            "key": "authorId",
+            "value": ""
+        },
+        {
+            "key": "bookId",
+            "value": ""
+        },
+        {
+            "key": "authorWithoutSurnameId",
+            "value": ""
+        },
+        {
+            "key": "missingId",
+            "value": "999999"
+        }
+    ],
+    "event": [
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Runs after every request in the collection",
+                    "if (pm.request.method === \"POST\") {",
+                    "    pm.test(\"Response is a SOAP 1.2 envelope\", () => {",
+                    "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/soap+xml\");",
+                    "    });",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "item": [
+        {
+            "name": "0. WSDL",
+            "item": [
+                {
+                    "name": "Get WSDL",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Is a WSDL document\", () => pm.expect(pm.response.text()).to.include(\"<wsdl:definitions\"));",
+                                    "pm.test(\"Declares the LibraryService\", () => pm.expect(pm.response.text()).to.include('name=\"LibraryService\"'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}?wsdl",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "wsdl",
+                                    "value": null
+                                }
+                            ]
+                        },
+                        "description": "The service contract. Can also be used to import the API into SoapUI."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "1. Publishing Company",
+            "item": [
+                {
+                    "name": "CreatePublishingCompany",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains CreatePublishingCompanyResponse\", () => pm.expect(pm.response.text()).to.include(\"<CreatePublishingCompanyResponse\"));",
+                                    "const id = pm.response.text().match(/<id>(\\d+)<\\/id>/);",
+                                    "pm.test(\"Response has a generated id\", () => pm.expect(id).to.not.be.null);",
+                                    "if (id) pm.collectionVariables.set(\"publishingCompanyId\", id[1]);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreatePublishingCompany\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreatePublishingCompanyRequest>\n            <tns:name>Postman Press</tns:name>\n        </tns:CreatePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "GetPublishingCompanyById",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains GetPublishingCompanyByIdResponse\", () => pm.expect(pm.response.text()).to.include(\"<GetPublishingCompanyByIdResponse\"));",
+                                    "pm.test(\"Name is Postman Press\", () => pm.expect(pm.response.text()).to.include(\"<name>Postman Press</name>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetPublishingCompanyById\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetPublishingCompanyByIdRequest>\n            <tns:id>{{publishingCompanyId}}</tns:id>\n        </tns:GetPublishingCompanyByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "ListPublishingCompanies",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains ListPublishingCompaniesResponse\", () => pm.expect(pm.response.text()).to.include(\"<ListPublishingCompaniesResponse\"));",
+                                    "pm.test(\"Contains the created company\", () => pm.expect(pm.response.text()).to.include(\"<id>\" + pm.collectionVariables.get(\"publishingCompanyId\") + \"</id>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/ListPublishingCompanies\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:ListPublishingCompaniesRequest/>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Empty request: the request element has no children."
+                    }
+                },
+                {
+                    "name": "UpdatePublishingCompany",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains UpdatePublishingCompanyResponse\", () => pm.expect(pm.response.text()).to.include(\"<UpdatePublishingCompanyResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdatePublishingCompany\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdatePublishingCompanyRequest>\n            <tns:name>Postman Press Updated</tns:name>\n            <tns:id>{{publishingCompanyId}}</tns:id>\n        </tns:UpdatePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Field order follows the WSDL: PublishingCompanyFields first, then id."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Author",
+            "item": [
+                {
+                    "name": "CreateAuthor",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains CreateAuthorResponse\", () => pm.expect(pm.response.text()).to.include(\"<CreateAuthorResponse\"));",
+                                    "const id = pm.response.text().match(/<id>(\\d+)<\\/id>/);",
+                                    "pm.test(\"Response has a generated id\", () => pm.expect(id).to.not.be.null);",
+                                    "if (id) pm.collectionVariables.set(\"authorId\", id[1]);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateAuthor\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateAuthorRequest>\n            <tns:name>Ada</tns:name>\n            <tns:surname>Lovelace</tns:surname>\n        </tns:CreateAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "GetAuthorById",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains GetAuthorByIdResponse\", () => pm.expect(pm.response.text()).to.include(\"<GetAuthorByIdResponse\"));",
+                                    "pm.test(\"Surname is Lovelace\", () => pm.expect(pm.response.text()).to.include(\"<surname>Lovelace</surname>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetAuthorById\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetAuthorByIdRequest>\n            <tns:id>{{authorId}}</tns:id>\n        </tns:GetAuthorByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "ListAuthors",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains ListAuthorsResponse\", () => pm.expect(pm.response.text()).to.include(\"<ListAuthorsResponse\"));",
+                                    "pm.test(\"Contains the created author\", () => pm.expect(pm.response.text()).to.include(\"<id>\" + pm.collectionVariables.get(\"authorId\") + \"</id>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/ListAuthors\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:ListAuthorsRequest/>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Empty request: the request element has no children."
+                    }
+                },
+                {
+                    "name": "UpdateAuthor",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains UpdateAuthorResponse\", () => pm.expect(pm.response.text()).to.include(\"<UpdateAuthorResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdateAuthor\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdateAuthorRequest>\n            <tns:name>Augusta Ada</tns:name>\n            <tns:surname>King</tns:surname>\n            <tns:id>{{authorId}}</tns:id>\n        </tns:UpdateAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Field order follows the WSDL: AuthorFields first, then id."
+                    }
+                },
+                {
+                    "name": "CreateAuthor - without surname",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains CreateAuthorResponse\", () => pm.expect(pm.response.text()).to.include(\"<CreateAuthorResponse\"));",
+                                    "const id = pm.response.text().match(/<id>(\\d+)<\\/id>/);",
+                                    "pm.test(\"Response has a generated id\", () => pm.expect(id).to.not.be.null);",
+                                    "if (id) pm.collectionVariables.set(\"authorWithoutSurnameId\", id[1]);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateAuthor\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateAuthorRequest>\n            <tns:name>Plato</tns:name>\n        </tns:CreateAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "surname is optional (minOccurs=\"0\")."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Book",
+            "item": [
+                {
+                    "name": "CreateBook",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains CreateBookResponse\", () => pm.expect(pm.response.text()).to.include(\"<CreateBookResponse\"));",
+                                    "const id = pm.response.text().match(/<id>(\\d+)<\\/id>/);",
+                                    "pm.test(\"Response has a generated id\", () => pm.expect(id).to.not.be.null);",
+                                    "if (id) pm.collectionVariables.set(\"bookId\", id[1]);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateBook\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateBookRequest>\n            <tns:title>Notes on the Analytical Engine</tns:title>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingYear>1943</tns:publishingYear>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n        </tns:CreateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Uses the author and publishing company created earlier in the run."
+                    }
+                },
+                {
+                    "name": "GetBookById",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains GetBookByIdResponse\", () => pm.expect(pm.response.text()).to.include(\"<GetBookByIdResponse\"));",
+                                    "pm.test(\"Year is 1943\", () => pm.expect(pm.response.text()).to.include(\"<publishingYear>1943</publishingYear>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetBookById\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetBookByIdRequest>\n            <tns:id>{{bookId}}</tns:id>\n        </tns:GetBookByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "UpdateBook",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains UpdateBookResponse\", () => pm.expect(pm.response.text()).to.include(\"<UpdateBookResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdateBook\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdateBookRequest>\n            <tns:title>Sketch of the Analytical Engine</tns:title>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingYear>1950</tns:publishingYear>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n            <tns:id>{{bookId}}</tns:id>\n        </tns:UpdateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Field order follows the WSDL: BookFields first, then id."
+                    }
+                },
+                {
+                    "name": "GetBookById - after update",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains GetBookByIdResponse\", () => pm.expect(pm.response.text()).to.include(\"<GetBookByIdResponse\"));",
+                                    "pm.test(\"Title was updated\", () => pm.expect(pm.response.text()).to.include(\"<title>Sketch of the Analytical Engine</title>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetBookById\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetBookByIdRequest>\n            <tns:id>{{bookId}}</tns:id>\n        </tns:GetBookByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "4. Negative tests",
+            "item": [
+                {
+                    "name": "Book",
+                    "item": [
+                        {
+                            "name": "GetBookById - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetBookById\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetBookByIdRequest>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:GetBookByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "GetBookById - ValidationFault (id not an integer)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'id must be an integer'\", () => pm.expect(pm.response.text()).to.include(\"id must be an integer\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetBookById\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetBookByIdRequest>\n            <tns:id>abc</tns:id>\n        </tns:GetBookByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreateBook - ValidationFault (missing title)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'title is required'\", () => pm.expect(pm.response.text()).to.include(\"title is required\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateBookRequest>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n        </tns:CreateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreateBook - ValidationFault (title over 255 chars)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'at most 255 characters'\", () => pm.expect(pm.response.text()).to.include(\"at most 255 characters\"));"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.variables.set(\"longTitle\", \"a\".repeat(256));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateBookRequest>\n            <tns:title>{{longTitle}}</tns:title>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n        </tns:CreateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                },
+                                "description": "The pre-request script fills {{longTitle}} with 256 characters."
+                            }
+                        },
+                        {
+                            "name": "CreateBook - ValidationFault (year before 1900)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'at least 1900'\", () => pm.expect(pm.response.text()).to.include(\"at least 1900\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateBookRequest>\n            <tns:title>Too Old</tns:title>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingYear>1899</tns:publishingYear>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n        </tns:CreateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreateBook - ValidationFault (author does not exist)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'Author 999999 does not exist'\", () => pm.expect(pm.response.text()).to.include(\"Author 999999 does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateBookRequest>\n            <tns:title>Orphan</tns:title>\n            <tns:authorId>{{missingId}}</tns:authorId>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n        </tns:CreateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreateBook - ValidationFault (publishing company does not exist)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'Publishing company 999999 does not exist'\", () => pm.expect(pm.response.text()).to.include(\"Publishing company 999999 does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateBookRequest>\n            <tns:title>Orphan</tns:title>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingCompanyId>{{missingId}}</tns:publishingCompanyId>\n        </tns:CreateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "UpdateBook - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdateBookRequest>\n            <tns:title>Ghost</tns:title>\n            <tns:authorId>{{authorId}}</tns:authorId>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:UpdateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "UpdateBook - ValidationFault (author does not exist)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'Author 999999 does not exist'\", () => pm.expect(pm.response.text()).to.include(\"Author 999999 does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdateBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdateBookRequest>\n            <tns:title>Ghost</tns:title>\n            <tns:authorId>{{missingId}}</tns:authorId>\n            <tns:publishingCompanyId>{{publishingCompanyId}}</tns:publishingCompanyId>\n            <tns:id>{{bookId}}</tns:id>\n        </tns:UpdateBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "DeleteBook - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeleteBook\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeleteBookRequest>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:DeleteBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Author",
+                    "item": [
+                        {
+                            "name": "GetAuthorById - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetAuthorById\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetAuthorByIdRequest>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:GetAuthorByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreateAuthor - ValidationFault (missing name)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'name is required'\", () => pm.expect(pm.response.text()).to.include(\"name is required\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateAuthor\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateAuthorRequest>\n            <tns:surname>Nameless</tns:surname>\n        </tns:CreateAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreateAuthor - ValidationFault (name over 40 chars)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'at most 40 characters'\", () => pm.expect(pm.response.text()).to.include(\"at most 40 characters\"));"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "listen": "prerequest",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.variables.set(\"longName\", \"a\".repeat(41));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreateAuthor\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreateAuthorRequest>\n            <tns:name>{{longName}}</tns:name>\n        </tns:CreateAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                },
+                                "description": "The pre-request script fills {{longName}} with 41 characters."
+                            }
+                        },
+                        {
+                            "name": "UpdateAuthor - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdateAuthor\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdateAuthorRequest>\n            <tns:name>Ghost</tns:name>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:UpdateAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "DeleteAuthor - ConflictFault (author has books)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ConflictFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ConflictFault>\"));",
+                                            "pm.test(\"Message mentions 'is referenced by'\", () => pm.expect(pm.response.text()).to.include(\"is referenced by\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeleteAuthor\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeleteAuthorRequest>\n            <tns:id>{{authorId}}</tns:id>\n        </tns:DeleteAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                },
+                                "description": "The book created in \"3. Book\" still references this author."
+                            }
+                        },
+                        {
+                            "name": "DeleteAuthor - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeleteAuthor\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeleteAuthorRequest>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:DeleteAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Publishing Company",
+                    "item": [
+                        {
+                            "name": "GetPublishingCompanyById - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetPublishingCompanyById\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetPublishingCompanyByIdRequest>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:GetPublishingCompanyByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "CreatePublishingCompany - ValidationFault (blank name)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ValidationFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ValidationFault>\"));",
+                                            "pm.test(\"Message mentions 'name is required'\", () => pm.expect(pm.response.text()).to.include(\"name is required\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/CreatePublishingCompany\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:CreatePublishingCompanyRequest>\n            <tns:name>   </tns:name>\n        </tns:CreatePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "UpdatePublishingCompany - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/UpdatePublishingCompany\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:UpdatePublishingCompanyRequest>\n            <tns:name>Ghost Press</tns:name>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:UpdatePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "DeletePublishingCompany - ConflictFault (company has books)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is ConflictFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:ConflictFault>\"));",
+                                            "pm.test(\"Message mentions 'is referenced by'\", () => pm.expect(pm.response.text()).to.include(\"is referenced by\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeletePublishingCompany\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeletePublishingCompanyRequest>\n            <tns:id>{{publishingCompanyId}}</tns:id>\n        </tns:DeletePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                },
+                                "description": "The book created in \"3. Book\" still references this publishing company."
+                            }
+                        },
+                        {
+                            "name": "DeletePublishingCompany - NotFoundFault",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                            "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                            "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                            "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeletePublishingCompany\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeletePublishingCompanyRequest>\n            <tns:id>{{missingId}}</tns:id>\n        </tns:DeletePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Protocol",
+                    "item": [
+                        {
+                            "name": "Malformed XML - 500",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 500\", () => pm.response.to.have.status(500));",
+                                            "pm.test(\"Fault says Invalid XML\", () => pm.expect(pm.response.text()).to.include(\"Invalid XML\"));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetBookById\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Body>\n        <tns:GetBookByIdRequest>\n            <tns:id>1000</tns:id>\n    <!-- closing tags missing -->",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                },
+                                "description": "node-soap rejects XML it cannot parse with a 500 fault before any operation runs."
+                            }
+                        },
+                        {
+                            "name": "Unknown operation - 500",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 500\", () => pm.response.to.have.status(500));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DoesNotExist\"",
+                                        "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/soap+xml",
+                                        "description": "Expect a SOAP 1.2 envelope back"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DoesNotExistRequest>\n            <tns:id>1</tns:id>\n        </tns:DoesNotExistRequest>\n    </soap:Body>\n</soap:Envelope>",
+                                    "options": {
+                                        "raw": {
+                                            "language": "xml"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ]
+                                },
+                                "description": "The body element does not match any operation in the WSDL."
+                            }
+                        },
+                        {
+                            "name": "GET without ?wsdl - 404",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status 404\", () => pm.response.to.have.status(404));"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/other",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "other"
+                                    ]
+                                },
+                                "description": "Only POST {{baseUrl}} and GET {{baseUrl}}?wsdl are served."
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "5. Cleanup",
+            "item": [
+                {
+                    "name": "DeleteBook",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains DeleteBookResponse\", () => pm.expect(pm.response.text()).to.include(\"<DeleteBookResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeleteBook\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeleteBookRequest>\n            <tns:id>{{bookId}}</tns:id>\n        </tns:DeleteBookRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "GetBookById - NotFoundFault after delete",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"SOAP 1.2 Sender fault\", () => pm.expect(pm.response.text()).to.include(\"<soap:Value>soap:Sender</soap:Value>\"));",
+                                    "pm.test(\"Detail is NotFoundFault\", () => pm.expect(pm.response.text()).to.include(\"<tns:NotFoundFault>\"));",
+                                    "pm.test(\"Message mentions 'does not exist'\", () => pm.expect(pm.response.text()).to.include(\"does not exist\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/GetBookById\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:GetBookByIdRequest>\n            <tns:id>{{bookId}}</tns:id>\n        </tns:GetBookByIdRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "DeleteAuthor",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains DeleteAuthorResponse\", () => pm.expect(pm.response.text()).to.include(\"<DeleteAuthorResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeleteAuthor\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeleteAuthorRequest>\n            <tns:id>{{authorId}}</tns:id>\n        </tns:DeleteAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Succeeds now that the book referencing the author is deleted."
+                    }
+                },
+                {
+                    "name": "DeleteAuthor - without surname",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains DeleteAuthorResponse\", () => pm.expect(pm.response.text()).to.include(\"<DeleteAuthorResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeleteAuthor\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeleteAuthorRequest>\n            <tns:id>{{authorWithoutSurnameId}}</tns:id>\n        </tns:DeleteAuthorRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "DeletePublishingCompany",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Body contains DeletePublishingCompanyResponse\", () => pm.expect(pm.response.text()).to.include(\"<DeletePublishingCompanyResponse\"));",
+                                    "pm.test(\"Acknowledgement success is true\", () => pm.expect(pm.response.text()).to.include(\"<success>true</success>\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/soap+xml; charset=utf-8; action=\"{{ns}}/DeletePublishingCompany\"",
+                                "description": "SOAP 1.2: media type application/soap+xml, the SOAPAction is the action parameter"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/soap+xml",
+                                "description": "Expect a SOAP 1.2 envelope back"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:tns=\"{{ns}}\">\n    <soap:Header/>\n    <soap:Body>\n        <tns:DeletePublishingCompanyRequest>\n            <tns:id>{{publishingCompanyId}}</tns:id>\n        </tns:DeletePublishingCompanyRequest>\n    </soap:Body>\n</soap:Envelope>",
+                            "options": {
+                                "raw": {
+                                    "language": "xml"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ]
+                        },
+                        "description": "Succeeds now that the book referencing the company is deleted."
+                    }
+                }
+            ]
+        }
+    ]
+}
