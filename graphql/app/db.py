@@ -1,10 +1,12 @@
 # sqlite3 is Python's built-in driver for SQLite databases.
 # Path builds the filesystem path to the database file.
+# library.db lives in the repository root, one folder above graphql/.
+# app/db.py -> app/ -> graphql/ -> repository root.
 
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parents[1] / "library.db"
+DB_PATH = Path(__file__).resolve().parents[2] / "library.db"
 
 
 def connect() -> sqlite3.Connection:

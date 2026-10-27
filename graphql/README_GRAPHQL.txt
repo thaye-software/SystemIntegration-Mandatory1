@@ -5,6 +5,9 @@ Types: Book, Author, Publisher
 Queries: book(id), authors, publishers
 Mutations: create, update (all fields), and delete for each type
 
+The project assumes that a library.db file exists in the project root
+(not in the graphql folder)
+
 Intallation guide with windows powershell
 
 1 Install python .venv (if it doesnt exist)

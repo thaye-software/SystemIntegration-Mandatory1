@@ -1,5 +1,4 @@
 # shutil copies the seed database into a temporary file.
-# Path locates library.db next to this project.
 # TestClient sends requests to the FastAPI app without opening a port.
 
 import shutil
@@ -7,7 +6,8 @@ from pathlib import Path
 
 from starlette.testclient import TestClient
 
-ROOT = Path(__file__).resolve().parents[1]
+# ROOT assumes the library file will be in the project root folder and not the graphql folder
+ROOT = Path(__file__).resolve().parents[2]
 SEED_DB = ROOT / "library.db"
 
 LIST_AUTHORS_AND_PUBLISHERS = """
