@@ -41,8 +41,10 @@ Intallation guide with windows powershell
     # install dependencies (id missing)
     pip install -r dependency_requirements.txt
 
-    # start the graphQl server
-    uvicorn app.main:app --reload
+
+    # start the graphQl server on 8001. --reload is optional
+    uvicorn app.main:app --reload --port 8001
+
 
     # in another powershell, go to the graphql folder, and run the tests
     .venv\Scripts\python.exe -m pytest test -q
@@ -70,7 +72,7 @@ Intallation guide with windows powershell
 
     # leave the server from section 0 running
     # open GraphiQL
-    http://127.0.0.1:8000/graphql
+    http://127.0.0.1:8001/graphql
 
     # paste one execution block on the left, press play, read the JSON on the right
     # run these in order, then always run the cleanup at the end
