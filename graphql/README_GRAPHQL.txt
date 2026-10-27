@@ -77,7 +77,7 @@ Intallation guide with windows powershell
     # paste one execution block on the left, press play, read the JSON on the right
     # run these in order, then always run the cleanup at the end
     # a finished run adds nothing that was not already in library.db
-    # ids used below: author 511, publisher 159, book 2000
+    # ids used below: book 5001, author 5002, publisher 5003
 
     # list what is already there (writes nothing)
     query { authors { id name surname } publishers { id name } }
@@ -90,20 +90,20 @@ Intallation guide with windows powershell
 
     # create the demo author and publisher
     mutation {
-      createAuthor(id: 511, name: "Demo", surname: "Author") { id name surname }
-      createPublisher(id: 159, name: "Demo Press") { id name }
+      createAuthor(id: 5002, name: "Demo", surname: "Author") { id name surname }
+      createPublisher(id: 5003, name: "Demo Press") { id name }
     }
 
     # create the demo book pointing at those ids
     mutation {
-      createBook(id: 2000, title: "Demo Book", authorId: 511, publishingCompanyId: 159, publishingYear: 2024) {
+      createBook(id: 5001, title: "Demo Book", authorId: 5002, publishingCompanyId: 5003, publishingYear: 2024) {
         id title authorId publishingCompanyId publishingYear
       }
     }
 
     # update that book (every field is sent again)
     mutation {
-      updateBook(id: 2000, title: "Demo Book Revised", authorId: 511, publishingCompanyId: 159, publishingYear: 2025) {
+      updateBook(id: 5001, title: "Demo Book Revised", authorId: 5002, publishingCompanyId: 5003, publishingYear: 2025) {
         id title publishingYear
       }
     }
@@ -111,27 +111,39 @@ Intallation guide with windows powershell
     # year before 1900: nothing is saved
     # errors[0].extensions.code is VALIDATION
     mutation {
-      createBook(title: "Too Old", authorId: 511, publishingCompanyId: 159, publishingYear: 1800) { id }
+      createBook(title: "Too Old", authorId: 5002, publishingCompanyId: 5003, publishingYear: 1800) { id }
     }
 
     # missing row: nothing is written
     # errors[0].extensions.code is NOT_FOUND
     query { book(id: 999999) { id title } }
 
-    # delete fails while book 2000 still points at the author
+    # delete fails while book 5001 still points at the author
     # errors[0].extensions.code is CONFLICT
-    mutation { deleteAuthor(id: 511) }
+    mutation { deleteAuthor(id: 5002) }
 
     # cleanup: book first, then author, then publisher. Each field returns true.
     # run this before another demo if a run stopped early
     mutation {
-      deleteBook(id: 2000)
-      deleteAuthor(id: 511)
-      deletePublisher(id: 159)
+      deleteBook(id: 5001)
+      deleteAuthor(id: 5002)
+      deletePublisher(id: 5003)
     }
 
     # check that the book author and publisher doesnt exist
-    query { book(id: 2000) { id title authorId publishingCompanyId publishingYear } }
-    query { author(id: 511) { id name surname } }
-    query { publisher(id: 159) { id name } }
+    query { book(id: 5001) { id title authorId publishingCompanyId publishingYear } }
+    query { author(id: 5002) { id name surname } }
+    query { publisher(id: 5003) { id name } }
+
+
+3 Postman
+---------------
+
+    # leave the server from the run section listening on port 8001
+    # in Postman: Import, then choose
+    graphql/postman/library-graphql.postman_collection.json
+
+    # open the collection and run it with the Collection Runner
+    # it is the same sequence as section 2
+
 
