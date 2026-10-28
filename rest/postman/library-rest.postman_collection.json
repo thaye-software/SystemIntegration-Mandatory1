@@ -1,0 +1,1445 @@
+{
+    "info": {
+        "name": "Library REST API",
+        "description": "REST API for the library (rest/). Start it first: cd rest, npm install, npm start (Node 22.13+).\n\nRun the whole collection with the Collection Runner and keep the folder order.\nFolder 4 creates a publisher, an author, and a book and stores their ids in the collection variables publisherId, authorId, and bookId; later folders use them.\nErrors are { \"error\": \"message\" } with status 400 (invalid input or reference), 404 (missing id), or 409 (delete while books reference the row).\nFolder \"10. Cleanup\" deletes the three rows and folder 11 checks they are gone, so library.db keeps no demo rows.\nIf a run stopped early, run folder \"10. Cleanup\" before starting again.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000"
+        },
+        {
+            "key": "bookId",
+            "value": ""
+        },
+        {
+            "key": "authorId",
+            "value": ""
+        },
+        {
+            "key": "publisherId",
+            "value": ""
+        },
+        {
+            "key": "lastOffset",
+            "value": ""
+        }
+    ],
+    "event": [
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// 204 No Content has no body",
+                    "if (pm.response.code !== 204) {",
+                    "    pm.test(\"Response is JSON\", () => {",
+                    "        pm.expect(pm.response.headers.get(\"Content-Type\") || \"\").to.include(\"json\");",
+                    "    });",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Health",
+            "description": "Checks the API is running and can read library.db.",
+            "item": [
+                {
+                    "name": "Health",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Status is ok\", () => pm.expect(pm.response.json().status).to.eql(\"ok\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/health",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "health"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. List",
+            "description": "List what is already there. Nothing is written.",
+            "item": [
+                {
+                    "name": "List books (page 1, 5 per page)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "const body = pm.response.json();",
+                                    "pm.test(\"5 books and pagination info\", () => {",
+                                    "    pm.expect(body.data).to.have.lengthOf(5);",
+                                    "    pm.expect(body.pagination).to.include({ limit: 5, offset: 0 });",
+                                    "    pm.expect(body.pagination.total).to.be.a(\"number\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books?limit=5&offset=0",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "5"
+                                },
+                                {
+                                    "key": "offset",
+                                    "value": "0"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List books (page 2, 5 per page)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Offset is 5\", () => pm.expect(pm.response.json().pagination.offset).to.eql(5));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books?limit=5&offset=5",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "5"
+                                },
+                                {
+                                    "key": "offset",
+                                    "value": "5"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List authors",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Authors are listed\", () => pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List publishers",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Publishers are listed\", () => pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Read one of each",
+            "description": "Read one existing book, author, and publisher. Nothing is written.",
+            "item": [
+                {
+                    "name": "Read book 1000",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Book 1000 is returned\", () => {",
+                                    "    pm.expect(pm.response.json()).to.have.all.keys(\"id\", \"title\", \"authorId\", \"publisherId\", \"publishingYear\");",
+                                    "    pm.expect(pm.response.json().id).to.eql(1000);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/1000",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "1000"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Read author 1",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Author 1 is returned\", () => pm.expect(pm.response.json()).to.have.all.keys(\"id\", \"name\", \"surname\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Read publisher 1",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Publisher 1 is returned\", () => pm.expect(pm.response.json()).to.have.all.keys(\"id\", \"name\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "4. Create",
+            "description": "Create a publisher and an author, then a book pointing at both. Each id is stored in a collection variable.",
+            "item": [
+                {
+                    "name": "Create publisher",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                                    "const body = pm.response.json();",
+                                    "pm.test(\"Publisher is Demo Press\", () => pm.expect(body.name).to.eql(\"Demo Press\"));",
+                                    "pm.test(\"Location header points at it\", () => pm.expect(pm.response.headers.get(\"Location\")).to.eql(`/publishers/${body.id}`));",
+                                    "pm.collectionVariables.set(\"publisherId\", body.id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Demo Press\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create author",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                                    "const body = pm.response.json();",
+                                    "pm.test(\"Author is Demo Author\", () => pm.expect(body).to.include({ name: \"Demo\", surname: \"Author\" }));",
+                                    "pm.collectionVariables.set(\"authorId\", body.id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Demo\",\n  \"surname\": \"Author\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                                    "const body = pm.response.json();",
+                                    "pm.test(\"Book is Demo Book\", () => {",
+                                    "    pm.expect(body).to.include({",
+                                    "        title: \"Demo Book\",",
+                                    "        authorId: Number(pm.collectionVariables.get(\"authorId\")),",
+                                    "        publisherId: Number(pm.collectionVariables.get(\"publisherId\")),",
+                                    "        publishingYear: 2024",
+                                    "    });",
+                                    "});",
+                                    "pm.collectionVariables.set(\"bookId\", body.id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/books",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Demo Book\",\n  \"authorId\": {{authorId}},\n  \"publisherId\": {{publisherId}},\n  \"publishingYear\": 2024\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Read created book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"It is Demo Book\", () => pm.expect(pm.response.json().title).to.eql(\"Demo Book\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/{{bookId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "{{bookId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "5. Update",
+            "description": "PUT replaces every field, so each request sends all of them.",
+            "item": [
+                {
+                    "name": "Update book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Book is Demo Book Revised, 2025\", () => {",
+                                    "    pm.expect(pm.response.json()).to.include({ title: \"Demo Book Revised\", publishingYear: 2025 });",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/{{bookId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "{{bookId}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Demo Book Revised\",\n  \"authorId\": {{authorId}},\n  \"publisherId\": {{publisherId}},\n  \"publishingYear\": 2025\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Update author",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Author is Demo Writer\", () => pm.expect(pm.response.json()).to.include({ name: \"Demo\", surname: \"Writer\" }));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/{{authorId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "{{authorId}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Demo\",\n  \"surname\": \"Writer\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Update publisher",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Publisher is Demo Publishing\", () => pm.expect(pm.response.json().name).to.eql(\"Demo Publishing\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers/{{publisherId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers",
+                                "{{publisherId}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Demo Publishing\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Read updated book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Update was saved\", () => pm.expect(pm.response.json().title).to.eql(\"Demo Book Revised\"));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/{{bookId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "{{bookId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "6. Validation errors",
+            "description": "Invalid input is rejected with 400. Nothing is written.",
+            "item": [
+                {
+                    "name": "Create book year 1800",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"publishingYear\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/books",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Too Old\",\n  \"authorId\": {{authorId}},\n  \"publisherId\": {{publisherId}},\n  \"publishingYear\": 1800\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create book with missing author",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"does not reference an existing author\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/books",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Demo Book\",\n  \"authorId\": 999999,\n  \"publisherId\": {{publisherId}},\n  \"publishingYear\": 2024\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create book with missing publisher",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"does not reference an existing publisher\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/books",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Demo Book\",\n  \"authorId\": {{authorId}},\n  \"publisherId\": 999999,\n  \"publishingYear\": 2024\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create book without title",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"title\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/books",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"authorId\": {{authorId}},\n  \"publisherId\": {{publisherId}},\n  \"publishingYear\": 2024\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create author with empty name",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"name\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"\",\n  \"surname\": \"Nobody\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Create publisher with malformed JSON",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"not valid JSON\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{ \"name\": ",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Read author with non-numeric id",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"positive integer\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/abc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "abc"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List books with limit 1000",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"limit\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books?limit=1000",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "1000"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "7. Not found",
+            "description": "Ids that do not exist give 404. Nothing is written.",
+            "item": [
+                {
+                    "name": "Read missing book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"not found\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/999999",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "999999"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update missing author",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"not found\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/999999",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "999999"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Ghost\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Delete missing publisher",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"not found\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers/999999",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers",
+                                "999999"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "8. Delete conflict",
+            "description": "The demo book still points at the author and publisher, so deleting them gives 409.",
+            "item": [
+                {
+                    "name": "Delete author while book exists",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 409 Conflict\", () => pm.response.to.have.status(409));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"cannot be deleted\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/{{authorId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "{{authorId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete publisher while book exists",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 409 Conflict\", () => pm.response.to.have.status(409));",
+                                    "pm.test(\"Body is { error }\", () => {",
+                                    "    pm.expect(pm.response.json().error).to.include(\"cannot be deleted\");",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers/{{publisherId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers",
+                                "{{publisherId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "9. Pagination",
+            "description": "Use the total to jump to the last page, which holds the newest book (the demo book). Nothing is written.",
+            "item": [
+                {
+                    "name": "Total includes demo book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "const total = pm.response.json().pagination.total;",
+                                    "pm.test(\"Total is a positive number\", () => pm.expect(total).to.be.above(0));",
+                                    "pm.collectionVariables.set(\"lastOffset\", total - 1);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books?limit=1&offset=0",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "offset",
+                                    "value": "0"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Last book is demo book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                                    "pm.test(\"Last book is the demo book\", () => {",
+                                    "    pm.expect(pm.response.json().data[0].id).to.eql(Number(pm.collectionVariables.get(\"bookId\")));",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books?limit=1&offset={{lastOffset}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "offset",
+                                    "value": "{{lastOffset}}"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "10. Cleanup",
+            "description": "Book first, then author, then publisher. Each returns 204. Run this before another demo if a run stopped early.",
+            "item": [
+                {
+                    "name": "Delete book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/{{bookId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "{{bookId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete author",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/{{authorId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "{{authorId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete publisher",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers/{{publisherId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers",
+                                "{{publisherId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "11. Check deleted",
+            "description": "Check that the book, author, and publisher no longer exist.",
+            "item": [
+                {
+                    "name": "Read deleted book",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/books/{{bookId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "books",
+                                "{{bookId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Read deleted author",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/authors/{{authorId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "authors",
+                                "{{authorId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Read deleted publisher",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/publishers/{{publisherId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "publishers",
+                                "{{publisherId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
