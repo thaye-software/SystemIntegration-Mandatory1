@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package library;
+
+// Contract for the gRPC API.
+// Each rpc is a named operation on the Library service.
+//
+// unary  = one request, one response (GetBookById, CreateBook)
+// stream = call stays open; server can send many Book messages (WatchBooks)
+service Library {
+    rpc GetBookById (GetBookByIdRequest) returns (Book);
+    rpc CreateBook (CreateBookRequest) returns (CreateBookResponse);
+    rpc WatchBooks (WatchBooksRequest) returns (stream Book);
+}
+
+// A book. The numbers (= 1, = 2, ...) are protobuf field ids on the wire,
+// not values. Do not renumber them. JS/Postman still use names (id, title, authorId, ...).
+message Book {
+    int32 id = 1;
+    string title = 2;
+    int32 author_id = 3;
+    int32 publisher_id = 4;
+    int32 publishing_year = 5;
+}
+
+// Input of GetBookById.
+message GetBookByIdRequest {
+    int32 id = 1;
+}
+
+// Input of CreateBook.
+// Assignment says "book name" and "publisher ID":
+// title = book name, publisher_id = tpublishingcompany.nPublishingCompanyID.
+message CreateBookRequest {
+    string title = 1;
+    int32 author_id = 2;
+    int32 publisher_id = 3;
+    int32 publishing_year = 4;
+}
+
+// Output of CreateBook. Only the generated id, not the full Book.
+message CreateBookResponse {
+    int32 id = 1;
+}
+
+// Input of WatchBooks. Empty because there are no filters — send {}.
+message WatchBooksRequest {}

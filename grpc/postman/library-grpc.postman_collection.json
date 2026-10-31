@@ -1,0 +1,151 @@
+{
+    "info": {
+        "name": "Library gRPC API",
+        "description": "gRPC API for the library (grpc/). Start it first: cd grpc, npm install, npm start (Node 22.13+).\n\nPostman: New > gRPC Request. Server URL is {{grpcHost}} (localhost:50051). Use server reflection, or import grpc/proto/library.proto, then pick library.Library and the method.\n\nJSON field names are camelCase (authorId, publisherId, publishingYear). proto3 missing ints are 0, so send a real id.\n\nDemo order:\n1. GetBookById id 1000 (Harry Potter, already in library.db)\n2. GetBookById id 999999 -> NOT_FOUND\n3. CreateBook publishingYear 1800 -> INVALID_ARGUMENT\n4. Leave WatchBooks invoking (stream stays open)\n5. In another tab, CreateBook with the gRPC Demo Book body\n6. The WatchBooks tab receives the new Book\n\nCreateBook writes a row. After the demo, delete that title in sqlite:\nDELETE FROM tbook WHERE cTitle = 'gRPC Demo Book';\nOr run npm run demo from grpc/ — it does the same sequence and deletes the row.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "grpcHost",
+            "value": "localhost:50051"
+        }
+    ],
+    "item": [
+        {
+            "name": "1. GetBookById",
+            "item": [
+                {
+                    "name": "Get existing book 1000",
+                    "protocol": "grpc",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "url": "{{grpcHost}}",
+                        "method": {
+                            "name": "GetBookById",
+                            "service": "Library",
+                            "package": "library",
+                            "methodType": "unary"
+                        },
+                        "message": {
+                            "mode": "raw",
+                            "raw": "{\n  \"id\": 1000\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get missing book 999999 (NOT_FOUND)",
+                    "protocol": "grpc",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "url": "{{grpcHost}}",
+                        "method": {
+                            "name": "GetBookById",
+                            "service": "Library",
+                            "package": "library",
+                            "methodType": "unary"
+                        },
+                        "message": {
+                            "mode": "raw",
+                            "raw": "{\n  \"id\": 999999\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. CreateBook errors",
+            "item": [
+                {
+                    "name": "Year 1800 (INVALID_ARGUMENT)",
+                    "protocol": "grpc",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "url": "{{grpcHost}}",
+                        "method": {
+                            "name": "CreateBook",
+                            "service": "Library",
+                            "package": "library",
+                            "methodType": "unary"
+                        },
+                        "message": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Too Old\",\n  \"authorId\": 394,\n  \"publisherId\": 74,\n  \"publishingYear\": 1800\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Missing author (INVALID_ARGUMENT)",
+                    "protocol": "grpc",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "url": "{{grpcHost}}",
+                        "method": {
+                            "name": "CreateBook",
+                            "service": "Library",
+                            "package": "library",
+                            "methodType": "unary"
+                        },
+                        "message": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"No Author\",\n  \"authorId\": 999999,\n  \"publisherId\": 74,\n  \"publishingYear\": 2026\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. WatchBooks then CreateBook",
+            "description": "Invoke WatchBooks first and leave the stream open. Then invoke Create gRPC Demo Book in another tab. The stream should print the new Book. Delete that row afterwards.",
+            "item": [
+                {
+                    "name": "WatchBooks (leave open)",
+                    "protocol": "grpc",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "url": "{{grpcHost}}",
+                        "method": {
+                            "name": "WatchBooks",
+                            "service": "Library",
+                            "package": "library",
+                            "methodType": "server-streaming"
+                        },
+                        "message": {
+                            "mode": "raw",
+                            "raw": "{}"
+                        }
+                    }
+                },
+                {
+                    "name": "Create gRPC Demo Book",
+                    "protocol": "grpc",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "url": "{{grpcHost}}",
+                        "method": {
+                            "name": "CreateBook",
+                            "service": "Library",
+                            "package": "library",
+                            "methodType": "unary"
+                        },
+                        "message": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"gRPC Demo Book\",\n  \"authorId\": 394,\n  \"publisherId\": 74,\n  \"publishingYear\": 2026\n}"
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

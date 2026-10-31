@@ -1,0 +1,22 @@
+{
+  "name": "library-grpc-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts",
+    "demo": "tsx scripts/demo.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.0",
+    "@grpc/proto-loader": "^0.8.0",
+    "@grpc/reflection": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.11",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
